@@ -1,0 +1,319 @@
+:local Jc 4
+:local Jmin 40
+:local Jmax 70
+:local TTL 64
+
+:local i1 "c3000000010870ac9c05f49d2bff0341d26000421578ace2b50e80d3a3e8b2c2e2e5f50aebf6f7364c9fbed6be8c14606445db7e5c0f75b825ffc3d872b3c463422f0c6334b45a1d1297ee2abda6150110864de45ade52b8a2e33a7c4db399678ccb0501ce14696ae1de40c350293d31db073976e3eae493500358df59b6e16867d4c39ff670168bf0ab50e43aa0fc0814c0762227ff93f334522d9562142dcdef7241b554bfe2c27a3ab066d516f4d31a47526318c644e15d90e98899e25c0ce8a67e14df149769c3d14833d27a25e25fde8afd68f587cc573e8c88e502793b50626f4c5267a5786b2903172a0ef4eea2fa282a02e3d3385d598baa9cacb9395d6c43c5ccbbdce9845a39ded847779f00c44cf5df34f3ad2a22e63504316b748eabacb3b03a1cc3df9c8d6ab60a0255b7f8d433d6d0a671b5cf30a0af2c04a7138cc1b264382e164ebbbcc290176ac9d6672e57cac55effa9df991a0ec1b4ed63910432ff03b187c3a22206c6a4914e16d59e36f011a08f03f3ac7baed06a884f9fa3ee84ab2d097d4863f84edc87b624ca9aeafcec920339d3addc7b5fae21e59cc47c58147b244300ad857e71b8cb9772c4fed8a7a775744f0d8448c70a491e3a7fa5a98c0997be9319a32495011cafb4c2f9b3ade1ef1a5efbc00dd7374e5ea0226d62934a2847c55c0d524337d4073557e96b9ff177414ef03945503fb7c6149db4c3f4a449e70363fe259360de0df0d194f43a44dd364acadb6683262927e1b3dbcbb8e8a610ab0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+:local i2 ""
+:local i3 ""
+:local i4 ""
+:local i5 ""
+
+:local tohex do={
+  :local n $1
+  :local h ""
+  :while ($n>0) do={
+    :local r ($n % 16)
+    :set h ([:pick "0123456789abcdef" $r ($r+1)] . $h)
+    :set n ($n / 16)
+  }
+  :return $h
+}
+
+:local mac2hex do={
+    :local m $1
+    :set m ([:pick $m 0 2].[:pick $m 3 5].[:pick $m 6 8].[:pick $m 9 11].[:pick $m 12 14].[:pick $m 15 17])
+    :return [:convert transform=lc $m]
+}
+
+:local hex16 do={
+    :local n [:tonum $1]
+    :local hi ($n >> 8)
+    :local lo ($n & 255)
+
+    :local digits "0123456789abcdef"
+
+    :local h1 [:pick $digits ($hi >> 4) (($hi >> 4) + 1)]
+    :local h2 [:pick $digits ($hi & 15) (($hi & 15) + 1)]
+    :local h3 [:pick $digits ($lo >> 4) (($lo >> 4) + 1)]
+    :local h4 [:pick $digits ($lo & 15) (($lo & 15) + 1)]
+
+    :return ($h1 . $h2 . $h3 . $h4)
+}
+
+:local hex8 do={
+    :local n [:tonum $1]
+    :local digits "0123456789abcdef"
+
+    :local h1 [:pick $digits ($n >> 4) (($n >> 4) + 1)]
+    :local h2 [:pick $digits ($n & 15) (($n & 15) + 1)]
+
+    :return ($h1 . $h2)
+}
+
+:local ip2hex do={
+    :local ip [:tostr $1]
+    :local digits "0123456789abcdef"
+    :local out ""
+    
+    :local p1 [:find $ip "."]
+    :local o1 [:tonum [:pick $ip 0 $p1]]
+    :set out ([:pick $digits ($o1 >> 4) (($o1 >> 4)+1)] . [:pick $digits ($o1 & 15) (($o1 & 15)+1)])
+    
+    :local p2 [:find $ip "." ($p1 + 1)]
+    :local o2 [:tonum [:pick $ip ($p1 + 1) $p2]]
+    :set out ($out . [:pick $digits ($o2 >> 4) (($o2 >> 4)+1)] . [:pick $digits ($o2 & 15) (($o2 & 15)+1)])
+    
+    :local p3 [:find $ip "." ($p2 + 1)]
+    :local o3 [:tonum [:pick $ip ($p2 + 1) $p3]]
+    :set out ($out . [:pick $digits ($o3 >> 4) (($o3 >> 4)+1)] . [:pick $digits ($o3 & 15) (($o3 & 15)+1)])
+    
+    :local o4 [:tonum [:pick $ip ($p3 + 1) [:len $ip]]]
+    :set out ($out . [:pick $digits ($o4 >> 4) (($o4 >> 4)+1)] . [:pick $digits ($o4 & 15) (($o4 & 15)+1)])
+    
+    :return $out
+}
+
+:local ipchecksum do={
+    :local header $1
+    :local sum 0
+
+    :for j from=0 to=9 do={
+        :local offset ($j * 4)
+        :local word [:pick $header $offset ($offset + 4)]
+        :local val [:tonum ("0x" . $word)]
+        :set sum ($sum + $val)
+    }
+
+    :while ($sum > 65535) do={
+        :set sum (($sum & 65535) + ($sum >> 16))
+    }
+
+    :local checksum (65535 - $sum)
+
+    :local hi ($checksum >> 8)
+    :local lo ($checksum & 255)
+
+    :local digits "0123456789abcdef"
+
+    :local h1 [:pick $digits ($hi >> 4) (($hi >> 4) + 1)]
+    :local h2 [:pick $digits ($hi & 15) (($hi & 15) + 1)]
+    :local h3 [:pick $digits ($lo >> 4) (($lo >> 4) + 1)]
+    :local h4 [:pick $digits ($lo & 15) (($lo & 15) + 1)]
+
+    :return ($h1 . $h2 . $h3 . $h4)
+}
+
+:local udpchecksum do={
+    :local srcHex $1
+    :local dstHex $2
+    :local udpLenNum $3 
+    :local udpTmp $4
+    :local pay $5
+
+    :local pseudo ($srcHex . $dstHex . "0000" . "11" . [$hex16 $udpLenNum])
+
+    :local checkdata ($pseudo . $udpTmp . $pay)
+
+    :if (([:len $checkdata] % 4) != 0) do={
+        :set checkdata ($checkdata . "00")
+    }
+
+    :local sum 0
+    :local wordCount ([:len $checkdata] / 4)
+    :for j from=0 to=($wordCount - 1) do={
+        :local offset ($j * 4)
+        :local word [:pick $checkdata $offset ($offset + 4)]
+        :local val [:tonum ("0x" . $word)]
+        :set sum ($sum + $val)
+    }
+
+    :while ($sum > 65535) do={
+        :set sum (($sum & 65535) + ($sum >> 16))
+    }
+
+    :local checksum (65535 - $sum)
+    :if ($checksum = 0) do={ :set checksum 0 }
+
+    :local hi ($checksum >> 8)
+    :local lo ($checksum & 255)
+    :local digits "0123456789abcdef"
+    :local h1 [:pick $digits ($hi >> 4) (($hi >> 4) + 1)]
+    :local h2 [:pick $digits ($hi & 15) (($hi & 15) + 1)]
+    :local h3 [:pick $digits ($lo >> 4) (($lo >> 4) + 1)]
+    :local h4 [:pick $digits ($lo & 15) (($lo & 15) + 1)]
+
+    :return ($h1 . $h2 . $h3 . $h4)
+}
+
+:local randhex do={
+
+    :local bytes $1
+    :local out ""
+    :local digits "0123456789abcdef"
+
+    :for i from=1 to=$bytes do={
+
+        :local r [:rndnum from=0 to=255]
+
+        :local h1 [:pick $digits ($r >> 4) (($r >> 4) + 1)]
+        :local h2 [:pick $digits ($r & 15) (($r & 15) + 1)]
+
+        :set out ($out . $h1 . $h2)
+    }
+
+    :return $out
+}
+
+:local parts ($i1 . "," . $i2 . "," . $i3 . "," . $i4 . "," . $i5)
+
+:for j from=1 to=$Jc do={
+    :local size [:rndnum from=$Jmin to=$Jmax]
+    :local junk [$randhex $size]
+    :set parts ($parts . "," . $junk)
+}
+
+:global Tx
+:global Rx
+/interface wireguard peers
+:foreach i in=[find where comment=BYPASS] do={
+    :local LocalTx [get $i tx]
+    :local LocalRx [get $i rx]
+    :local LastHandshake [get $i last-handshake]
+    :local isDisabled [get $i disabled]
+    :if (([:tostr $LastHandshake] = "") or ($LastHandshake > [:totime "3m20s"]) or ($isDisabled = yes)) do={
+        :local PeerName [get $i name]
+        :local Interface [get $i interface]
+        :local EndpointAddress [get $i endpoint-address]
+        :local EndpointIP ""
+
+        :local dotCount 0
+        :local isIP true
+        :local pos 0
+        :while ($pos < [:len $EndpointAddress]) do={
+            :local ch [:pick $EndpointAddress $pos ($pos + 1)]
+            :if ($ch = ".") do={
+                :set dotCount ($dotCount + 1)
+            } else={
+                :if ([:find "0123456789" $ch] = []) do={
+                    :set isIP false
+                }
+            }
+            :set pos ($pos + 1)
+        }
+
+        :if ($isIP and $dotCount = 3) do={
+            :set EndpointIP $EndpointAddress
+        } else={
+            :set EndpointIP [:resolve $EndpointAddress]
+        }
+
+        :local DstPort [get $i current-endpoint-port]
+        :local rndport [:rndnum from=49000 to=59999]
+        /interface wireguard set $Interface listen-port=$rndport
+        :local SrcPort [/interface wireguard get $Interface listen-port]
+
+        /tool ping address=$EndpointIP count=1 interval=200ms
+        :delay 1s        
+        :local conn [/ip firewall connection find where dst-address="$EndpointIP" and protocol=icmp]
+        :if ([:len $conn]=0) do={
+            :log error "No WG conntrack entry for $EndpointIP:$DstPort"
+            :return
+        }
+        :local cid [:pick $conn 0]
+        :local srcip [/ip firewall connection get $cid reply-dst-address]
+
+        :local route [/ip route check dst-ip=$EndpointIP once as-value]
+        :local outIf ($route->"interface")
+        :local ifType [/interface get $outIf type]
+
+        :if ([:len $route]=0) do={
+            :log error "Route check failed"
+            :return
+        }
+
+        :local eth ""
+        :local gw ""
+        :if ($ifType = "ether" or $ifType = "bridge") do={  
+            :set gw ($route->"nexthop")
+            :local srcmacRaw [/interface get $outIf mac-address]
+            :local srcmac [$mac2hex $srcmacRaw]
+            :local dstmacRaw [/ip arp get [find where address=$gw and interface=$outIf] mac-address]
+            :local dstmac [$mac2hex $dstmacRaw]
+            :set eth ($dstmac.$srcmac."0800")
+        }
+
+        :if ($ifType = "vlan") do={  
+            :set gw ($route->"nexthop")
+            :local srcmacRaw [/interface get $outIf mac-address]
+            :local srcmac [$mac2hex $srcmacRaw]
+            :local dstmacRaw [/ip arp get [find where address=$gw and interface=$outIf] mac-address]
+            :local dstmac [$mac2hex $dstmacRaw]
+            :local vlanId [/interface/vlan/get $outIf vlan-id]
+            :local vlanIdHex [$hex16 $vlanId]
+            :set outIf [/interface/vlan/get $outIf interface]
+            :set eth ($dstmac.$srcmac."8100".$vlanIdHex."0800")
+        }
+
+        :local srcipHex [$ip2hex $srcip]
+        :local dstipHex [$ip2hex $EndpointIP]
+        :local ttlHex [$hex8 $TTL]
+
+        :local ipid [:rndnum from=0 to=65535]
+        :local ipidHex [$hex16 $ipid]
+
+        :local srcPortHex [$hex16 $SrcPort]
+        :local dstPortHex [$hex16 $DstPort]
+
+        #Log peer info
+        :log warning ("Peer: $PeerName, Interface: $Interface")
+        :log warning ("Endpoint Address: $EndpointAddress, Endpoint IP: $EndpointIP")
+        :log warning ("Src Port: $SrcPort, Dst Port: $DstPort, Last Handshake: $LastHandshake")
+        :log warning ("Last Rx: " . $Rx->[:tostr $i] . ", Current Rx: $LocalRx")
+        :log warning ("Last Tx: " . $Tx->[:tostr $i] . ", Current Tx: $LocalTx")
+        
+        #Disable peer
+        :log warning ("Disable peer: $PeerName")
+        set $i disabled=yes
+        :delay 100ms
+        
+        #Generating spam
+        :log warning ("Generating spam")
+        :delay 1
+
+        :log warning ("gateway: $gw")
+        :log warning ("eth: $eth")
+        :log warning ("srcip: $srcip")
+        :log warning ("srcipHex: $srcipHex")
+        :log warning ("dstip: $EndpointIP")
+        :log warning ("dstipHex: $dstipHex")
+        :log warning ("outInterface: $outIf")
+
+        :foreach part in=[:toarray $parts] do={
+
+            :if ([:len $part] = 0) do={ :continue }
+            :local partLen ([:len $part] / 2)
+            :local udpLen ($partLen + 8)
+            :local ipLen ($udpLen + 20)
+            :local udpHeaderTmp ($srcPortHex.$dstPortHex.[$hex16 $udpLen]."0000")
+            :local udpCsum [$udpchecksum $srcipHex $dstipHex $udpLen $udpHeaderTmp $part]
+            :local udpHeader ($srcPortHex.$dstPortHex.[$hex16 $udpLen].$udpCsum)
+            :local ipHeaderTmp ("45"."00".[$hex16 $ipLen].$ipidHex."0000".$ttlHex."11"."0000".$srcipHex.$dstipHex)
+            :local ipCsum [$ipchecksum $ipHeaderTmp]
+            :local ipHeader ("45"."00".[$hex16 $ipLen].$ipidHex."0000".$ttlHex."11".$ipCsum.$srcipHex.$dstipHex)
+            :local l34 ($ipHeader.$udpHeader)
+            :local fullpacket ($eth.$l34.$part)
+
+            :log warning ("fullpacket: $fullpacket")
+            /tool/traffic-generator/inject interface="$outIf" data=$fullpacket
+
+            :delay 5ms
+        }
+        
+        #Enable peer
+        :log warning ("Enable peer: $PeerName")
+        set $i disabled=no
+    }
+    :set ($Tx->[:tostr $i]) $LocalTx
+    :set ($Rx->[:tostr $i]) $LocalRx
+}
